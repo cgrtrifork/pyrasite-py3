@@ -1,6 +1,6 @@
 Name:             pyrasite
 Version:          2.0
-Release:          1%{?dist}
+Release:          3%{?dist}
 Summary:          Code injection and monitoring of running Python processes
 
 Group:            Development/Languages
@@ -15,6 +15,9 @@ BuildRequires:    python-nose
 BuildRequires:    python-sphinx
 
 Requires:         gdb
+Requires:         python-meliae
+Requires:         python-urwid
+Requires:         python-setuptools
 
 %if 0%{?rhel} <= 6
 BuildRequires:    python-argparse
@@ -51,5 +54,13 @@ gzip -c docs/_build/man/pyrasite.1 > %{buildroot}/%{_mandir}/man1/pyrasite.1.gz
 %{python_sitelib}/*
 
 %changelog
+* Wed Jan 16 2013 Luke Macken <lmacken@redhat.com> - 2.0-3
+- Require python-setuptools needed for pkg_resources
+
+* Tue Aug 21 2012 Luke Macken <lmacken@redhat.com> - 2.0-2
+- Require python-urwid for the pyrasite-memory-viewer
+- Require python-meliae for the memory-viewer and dump_memory payload
+  (github#40)
+
 * Mon Mar 12 2012 Luke Macken <lmacken@redhat.com> 2.0-1
 - Initial package for Fedora

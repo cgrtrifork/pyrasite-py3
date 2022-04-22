@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with pyrasite.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2011, 2012 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
+# Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 
 import os
 import sys
@@ -22,10 +22,10 @@ import subprocess
 import pyrasite
 
 from pyrasite.tests.utils import generate_program, run_program, stop_program, \
-                                 interpreters, unittest
+                                 interpreters
 
 
-class TestCodeInjection(unittest.TestCase):
+class TestCodeInjection(object):
 
     def assert_output_contains(self, stdout, stderr, text):
         assert text in str(stdout), \
@@ -48,7 +48,7 @@ class TestCodeInjection(unittest.TestCase):
 
     def test_many_payloads_into_program_with_many_threads(self):
         program = generate_program(threads=25)
-        num_payloads = 25
+        num_payloads = 5
         try:
             for exe in interpreters():
                 p = run_program(program, exe=exe)
@@ -81,5 +81,3 @@ class TestCodeInjection(unittest.TestCase):
         finally:
             os.unlink(program)
 
-if __name__ == '__main__':
-    unittest.main()

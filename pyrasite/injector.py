@@ -13,29 +13,50 @@
 # You should have received a copy of the GNU General Public License
 # along with pyrasite.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2011, 2012 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
+# Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 
 import os
 import subprocess
+import platform
 
 def inject(pid, filename, verbose=False, gdb_prefix=''):
     """Executes a file in a running Python process."""
     filename = os.path.abspath(filename)
     gdb_cmds = [
-        'PyGILState_Ensure()',
-        'PyRun_SimpleString("'
+        '((int (*)())PyGILState_Ensure)()',
+        '((int (*)(const char *))PyRun_SimpleString)("'
             'import sys; sys.path.insert(0, \\"%s\\"); '
             'sys.path.insert(0, \\"%s\\"); '
             'exec(open(\\"%s\\").read())")' %
                 (os.path.dirname(filename),
                 os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
                 filename),
-        'PyGILState_Release($1)',
+        '((void (*) (int) )PyGILState_Release)($1)',
         ]
-    p = subprocess.Popen('%sgdb -p %d -batch %s' % (gdb_prefix, pid,
-        ' '.join(["-eval-command='call %s'" % cmd for cmd in gdb_cmds])),
+    cmd = '%sgdb -p %d -batch %s' % (gdb_prefix, pid, ' '.join(["-eval-command='call %s'" % cmd for cmd in gdb_cmds]))
+    p = subprocess.Popen(cmd,
         shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     if verbose:
-        print(out)
-        print(err)
+        print("====== gdb stdout: ======")
+        print(out.decode("u8"))
+        print("====== gdb stderr: ======")
+        print(err.decode("u8"))
+        print("======")
+
+if platform.system() == 'Windows':
+    def inject_win(pid, filename, verbose=False, gdb_prefix=''):
+        if gdb_prefix == '':
+            gdb_prefix = os.path.join(os.path.dirname(__file__), 'win') + os.sep
+        filename = os.path.abspath(filename)
+        code = 'import sys; sys.path.insert(0, \\"%s\\"); sys.path.insert(0, \\"%s\\"); exec(open(\\"%s\\").read())' % (os.path.dirname(filename).replace('\\', '/'), os.path.abspath(os.path.join(os.path.dirname(__file__), '..')).replace('\\', '/'), filename.replace('\\', '/'))
+        p = subprocess.Popen('%sinject_python_32.exe %d \"%s\"' % (gdb_prefix, pid, code), shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        out, err = p.communicate()
+        if p.wait() == 25:
+            p = subprocess.Popen('%sinject_python_64.exe %d \"%s\"' % (gdb_prefix, pid, code), shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+            out, err = p.communicate()
+        if verbose:
+            print(out)
+            print(err)
+
+    inject = inject_win

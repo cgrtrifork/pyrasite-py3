@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with pyrasite.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2011-2012 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
+# Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 
 import os
 import sys
@@ -22,11 +22,6 @@ import time
 import textwrap
 import tempfile
 import subprocess
-import unittest
-
-if sys.version_info[0] == 2:
-    if sys.version_info[1] < 7:
-        import unittest2 as unittest
 
 
 def generate_program(threads=1):

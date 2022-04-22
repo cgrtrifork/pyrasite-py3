@@ -1,5 +1,7 @@
 import sys
 from setuptools import setup, find_packages
+from distutils.command.build_py import build_py as _build_py
+import platform
 
 try:
     # These imports are not used, but make
@@ -9,13 +11,13 @@ try:
 except Exception:
     pass
 
-version = '2.0'
+version = '2.0.1'
 
 f = open('README.rst')
-long_description = f.read().split('split here')[1]
+long_description = f.read()
 f.close()
 
-requirements = []
+requirements = ['urwid']
 if sys.version_info[0] == 3:
     if sys.version_info[1] < 2:
         requirements.append('argparse')
@@ -24,18 +26,44 @@ elif sys.version_info[0] == 2:
         requirements.append('argparse')
 
 tests_require = ['nose']
-if sys.version_info[0] == 2:
-    if sys.version_info[1] < 7:
-        tests_require.append('unittest2')
 
-setup(name='pyrasite',
+class build_py(_build_py):
+  def run(self):
+    _build_py.run(self)
+    if platform.system() == 'Windows':
+      import os
+      try:
+        import winbuild
+      except:
+        self.announce("Could not find an microsoft compiler for supporting windows process injection", 2)
+        return
+      #can fail ?
+      dirs = [x for x in self.get_data_files() if x[0] == 'pyrasite'][0]
+      srcfile = os.path.join(dirs[1], 'win', 'inject_python.cpp')
+      out32exe = os.path.join(dirs[2], 'win', 'inject_python_32.exe')
+      out64exe = os.path.join(dirs[2], 'win', 'inject_python_64.exe')
+      try:
+        os.makedirs(os.path.dirname(out32exe))
+      except:
+        pass
+      try:
+        winbuild.compile(srcfile, out32exe, 'x86')
+      except:
+        self.announce("Could not find an x86 microsoft compiler for supporting injection to 32 bit python instances", 2)
+      try:
+        winbuild.compile(srcfile, out64exe, 'x64')
+      except:
+        self.announce("Could not find an x64 microsoft compiler for supporting injection to 64 bit python instances", 2)
+
+
+setup(name='pyrasite-ng',
       version=version,
       description="Inject code into a running Python process",
       long_description=long_description,
       keywords='debugging injection runtime',
       author='Luke Macken',
       author_email='lmacken@redhat.com',
-      url='http://pyrasite.com',
+      url='https://github.com/user202729/pyrasite-ng',
       license='GPLv3',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
@@ -60,4 +88,5 @@ setup(name='pyrasite',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3',
       ],
+      cmdclass={'build_py': build_py}
       )

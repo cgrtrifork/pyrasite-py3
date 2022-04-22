@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with pyrasite.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2011, 2012 Red Hat, Inc.
+# Copyright (C) 2011-2013 Red Hat, Inc.
 
 import os
 import sys
@@ -87,6 +87,15 @@ def main():
                         default="")
     parser.add_argument('--verbose', dest='verbose', help='Verbose mode',
                         default=False, action='store_const', const=True)
+    parser.add_argument('--output', dest='output_type', default='procstreams',
+                        action='store',
+                        help="Set where output is to be printed. 'procstreams'" 
+                             " prints output in stdout/stderr of running process"
+                             " and 'localterm' prints output in local terminal.")
+    parser.add_argument('--ipc-timeout', dest='ipc_timeout', default=5,
+                        action='store', type=int,
+                        help="The number of seconds to wait for the injected"
+                             " code to reply over IPC before giving up.")
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -99,6 +108,11 @@ def main():
         for payload in list_payloads():
             print("  %s" % payload)
         sys.exit()
+
+    # Make sure the output type is valid (procstreams || localterm)
+    if args.output_type != 'procstreams' and args.output_type != 'localterm':
+        print("Error: --output arg must be 'procstreams' or 'localterm'")
+        sys.exit(5)
 
     try:
         pid = int(args.pid)
@@ -115,8 +129,26 @@ def main():
         print("Error: The second argument must be a filename or a payload name")
         sys.exit(4)
 
-    pyrasite.inject(pid, filename, verbose=args.verbose,
-                    gdb_prefix=args.gdb_prefix)
+
+    if args.output_type == 'localterm':
+        # Create new IPC connection to the process.
+        ipc = pyrasite.PyrasiteIPC(pid, 'ReversePythonConnection',
+                                   timeout=args.ipc_timeout)
+        ipc.connect()
+        print("Pyrasite Shell %s" % pyrasite.__version__)
+        print("Connected to '%s'" % ipc.title)
+
+        # Read in the payload
+        fd = open(filename)
+        payload = fd.read()
+        fd.close
+
+        # Run the payload, print output, close ipc connection
+        print(ipc.cmd(payload))
+        ipc.close()
+    else:
+        pyrasite.inject(pid, filename, verbose=args.verbose,
+                        gdb_prefix=args.gdb_prefix)
 
 
 if __name__ == '__main__':

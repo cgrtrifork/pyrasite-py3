@@ -13,8 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with pyrasite.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2012 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
+# Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 
+import os
 import sys
 import pyrasite
 
@@ -22,11 +23,18 @@ import pyrasite
 def shell():
     """Open a Python shell in a running process"""
 
+    usage = "Usage: pyrasite-shell <PID>"
     if not len(sys.argv) == 2:
-        print("Usage: pyrasite-shell <PID>")
+        print(usage)
+        sys.exit(1)
+    try:
+        pid = int(sys.argv[1])
+    except ValueError:
+        print(usage)
         sys.exit(1)
 
-    ipc = pyrasite.PyrasiteIPC(int(sys.argv[1]), 'ReversePythonShell')
+    ipc = pyrasite.PyrasiteIPC(pid, 'ReversePythonShell',
+                               timeout=os.getenv('PYRASITE_IPC_TIMEOUT') or 5)
     ipc.connect()
 
     print("Pyrasite Shell %s" % pyrasite.__version__)
@@ -67,8 +75,8 @@ def shell():
     except:
         print('')
         raise
-
-    ipc.close()
+    finally:
+        ipc.close()
 
 
 if __name__ == '__main__':

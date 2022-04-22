@@ -13,17 +13,20 @@
 # You should have received a copy of the GNU General Public License
 # along with pyrasite.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2011, 2012 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
+# Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 """
 :mod:`pyrasite.ipc` - Pyrasite Inter-Python Communication
 =========================================================
 """
 
 import os
+import stat
 import socket
 import struct
 import tempfile
+import traceback
 import subprocess
+import platform
 
 from os.path import dirname, abspath, join
 
@@ -61,7 +64,7 @@ class PyrasiteIPC(object):
     # shell payloads with netcat.
     reliable = True
 
-    def __init__(self, pid, reverse='ReversePythonConnection'):
+    def __init__(self, pid, reverse='ReversePythonConnection', timeout=5):
         super(PyrasiteIPC, self).__init__()
         self.pid = pid
         self.sock = None
@@ -69,6 +72,7 @@ class PyrasiteIPC(object):
         self.hostname = None
         self.port = None
         self.reverse = reverse
+        self.timeout = float(timeout)
 
     def __enter__(self):
         self.connect()
@@ -80,9 +84,18 @@ class PyrasiteIPC(object):
     @property
     def title(self):
         if not getattr(self, '_title', None):
-            p = subprocess.Popen('ps --no-heading -o cmd= -p %d' % self.pid,
-                                 stdout=subprocess.PIPE, shell=True)
-            self._title = p.communicate()[0].decode('utf-8')
+            if platform.system() == 'Windows':
+                p = subprocess.Popen('tasklist /v /fi "pid eq %d" /nh /fo csv' % self.pid,
+                                    stdout=subprocess.PIPE, shell=True)
+                tmp = p.communicate()[0].decode('utf-8').strip().split(',')
+                if tmp[-1] == '"N/A"':
+                    self._title = tmp[0][1:-1]
+                else:
+                    self._title = tmp[-1][1:-1]
+            else:
+                p = subprocess.Popen('ps --no-heading -o cmd= -p %d' % self.pid,
+                                    stdout=subprocess.PIPE, shell=True)
+                self._title = p.communicate()[0].decode('utf-8')
         return self._title.strip()
 
     def connect(self):
@@ -115,13 +128,14 @@ class PyrasiteIPC(object):
 
         if not self.server_sock:
             raise Exception('pyrasite was unable to setup a ' +
-                    'local server socket')
+                            'local server socket')
         else:
             self.hostname, self.port = self.server_sock.getsockname()[0:2]
 
     def create_payload(self):
         """Write out a reverse python connection payload with a custom port"""
         (fd, filename) = tempfile.mkstemp()
+        os.chmod(filename, 0o644)
         tmp = os.fdopen(fd, 'w')
         path = dirname(abspath(pyrasite.__file__))
         payload = open(join(path, 'reverse.py'))
@@ -138,6 +152,9 @@ class PyrasiteIPC(object):
         tmp.close()
         payload.close()
 
+        if platform.system() != 'Windows':
+            os.chmod(filename, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+
         return filename
 
     def inject(self):
@@ -150,7 +167,7 @@ class PyrasiteIPC(object):
         """Wait for the injected payload to connect back to us"""
         (clientsocket, address) = self.server_sock.accept()
         self.sock = clientsocket
-        self.sock.settimeout(5)
+        self.sock.settimeout(self.timeout)
         self.address = address
 
     def cmd(self, cmd):
@@ -191,10 +208,13 @@ class PyrasiteIPC(object):
         return data
 
     def close(self):
-        if self.sock:
-            self.sock.close()
-        if getattr(self, 'server_sock', None):
-            self.server_sock.close()
+        try:
+            if self.sock:
+                self.sock.close()
+            if getattr(self, 'server_sock', None):
+                self.server_sock.close()
+        except:
+            traceback.print_exc()
 
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.pid)

@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with pyrasite.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2011, 2012 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
+# Copyright (C) 2011-2013 Red Hat, Inc., Luke Macken <lmacken@redhat.com>
 """
 :mod:`pyrasite.reverse` - Pyrasite Reverse Connection Payload
 =============================================================
@@ -109,9 +109,10 @@ class ReversePythonConnection(ReverseConnection):
             output = buffer.getvalue()
         except:
             output = traceback.format_exc()
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
-        buffer.close()
+        finally:
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
+            buffer.close()
         self.send(output)
         return True
 
@@ -186,6 +187,6 @@ class ReversePythonShell(threading.Thread, pyrasite.PyrasiteIPC):
             pass
         except:
             traceback.print_exc(file=sys.__stderr__)
-
-        sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
-        self.close()
+        finally:
+            sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+            self.close()
