@@ -1,4 +1,4 @@
-meliae-py3 @ git+https://github.com/cgrtrifork/meliae-py3.git#egg=meliae
+meliae @ git+https://github.com/cgrtrifork/meliae-py3.git#egg=meliae
 psutil==5.9.0
 pycallgraph==1.0.1
 six==1.16.0
