@@ -56,7 +56,7 @@ class build_py(_build_py):
         self.announce("Could not find an x64 microsoft compiler for supporting injection to 64 bit python instances", 2)
 
 
-setup(name='pyrasite-ng',
+setup(name='pyrasite-py3',
       version=version,
       description="Inject code into a running Python process",
       long_description=long_description,
